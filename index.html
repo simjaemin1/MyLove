@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Asung HMP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .chat-container {
+      width: 100%;
+      max-width: 480px;
+      height: 80vh;
+      background: #ffffff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .header {
+      padding: 12px 16px;
+      background: #2E7D32;
+      color: #fff;
+      font-weight: 600;
+      font-size: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header .user-status {
+      font-size: 12px;
+      font-weight: 400;
+      opacity: 0.8;
+    }
+    .messages {
+      flex: 1;
+      padding: 12px 16px;
+      overflow-y: auto;
+      overflow-anchor: none;
+      font-size: 14px;
+    }
+    .message {
+      margin-bottom: 4px;
+      line-height: 1.4;
+      word-break: break-word;
+      max-width: 80%;
+      display: flex;
+      flex-direction: column;
+    }
+    .message .content-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .message.mine {
+      margin-left: auto;
+      align-items: flex-end;
+    }
+    .message.mine .content-row {
+      flex-direction: row-reverse;
+    }
+    .message.mine .bubble {
+      background: #4CAF50;
+      color: #fff;
+      border-radius: 12px 12px 0 12px;
+    }
+    .message.other {
+      margin-right: auto;
+      align-items: flex-start;
+    }
+    .message.other .bubble {
+      background: #e9e9e9;
+      color: #000;
+      border-radius: 12px 12px 12px 0;
+    }
+    .message .bubble {
+      display: inline-block;
+      padding: 8px 12px;
+    }
+    .message .name {
+      font-weight: 600;
+      font-size: 14px;
+      margin-top: 12px;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .message .time {
+      font-size: 11px;
+      color: #888;
+      flex-shrink: 0;
+    }
+    .message.mine .time {
+      color: #aaa;
+    }
+    .message .bubble img {
+      max-width: 200px;
+      max-height: 200px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: block;
+    }
+    .message .bubble.image-bubble {
+      background: transparent;
+      padding: 0;
+    }
+    /* 설정 모달 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+    .modal-overlay.show {
+      display: flex;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      width: 90%;
+      max-width: 320px;
+    }
+    .modal h3 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+    }
+    .modal .field {
+      margin-bottom: 12px;
+    }
+    .modal .field label {
+      display: block;
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    .modal .field input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .modal .buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .modal .buttons button {
+      flex: 1;
+    }
+    /* 이미지 미리보기 */
+    .preview-container {
+      display: none;
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .preview-container.show {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .preview-item {
+      position: relative;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .preview-item img {
+      width: 60px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .preview-item .remove-btn {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 10px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 18px;
+    }
+    .preview-count {
+      font-size: 12px;
+      color: #666;
+      flex-shrink: 0;
+    }
+    .loading-more {
+      text-align: center;
+      padding: 8px;
+      color: #888;
+      font-size: 12px;
+    }
+    .footer {
+      border-top: 1px solid #eee;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .footer-row {
+      display: flex;
+      gap: 6px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    input[type="text"].small {
+      flex: 0.5;
+    }
+    button {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: none;
+      background: #4CAF50;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    button.secondary {
+      background: #81C784;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="header">
+      <span>Asung HMP</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="userStatus" class="user-status"></span>
+        <button id="settingsBtn" style="background:transparent;padding:4px 8px;font-size:16px;">⚙️</button>
+      </div>
+    </div>
+    <div id="messages" class="messages"></div>
+    <div class="footer">
+      <div id="previewContainer" class="preview-container">
+        <span id="previewCount" class="preview-count"></span>
+      </div>
+      <div class="footer-row">
+        <input id="messageInput" type="text" placeholder="메시지를 입력하세요" />
+        <input id="imageInput" type="file" accept="image/*" multiple style="display:none;" />
+        <button id="imageBtn" class="secondary">📷</button>
+        <button id="sendBtn">전송</button>
+      </div>
+    </div>
+
+    <!-- 설정 모달 -->
+    <div id="modalOverlay" class="modal-overlay">
+      <div class="modal">
+        <h3>⚙️ 설정</h3>
+        <div class="field">
+          <label>아이디 (선택)</label>
+          <input id="userIdInput" type="text" placeholder="아이디 입력" />
+        </div>
+        <div class="field">
+          <label>닉네임</label>
+          <input id="nameInput" type="text" placeholder="닉네임 입력" />
+        </div>
+        <div class="buttons">
+          <button id="loginBtn">로그인</button>
+          <button id="logoutBtn" class="secondary" style="display:none;">로그아웃</button>
+          <button id="saveNameBtn">저장</button>
+        </div>
+        <div class="buttons" style="margin-top:8px;">
+          <button id="notificationBtn">🔔 알림 켜기</button>
+        </div>
+        <div class="buttons" style="margin-top:8px;">
+          <button id="closeModalBtn" class="secondary">닫기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
+
+  <script>
+    window.onerror = function(msg, url, line, col, error) {
+      alert("에러: " + msg + "\n라인: " + line);
+      return false;
+    };
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDVn1_utqTMBFOXnGNAt78i1LH8nH9AWjs",
+        authDomain: "mylove-1e603.firebaseapp.com",
+        databaseURL: "https://mylove-1e603-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "mylove-1e603",
+        storageBucket: "mylove-1e603.firebasestorage.app",
+        messagingSenderId: "28187724372",
+        appId: "1:28187724372:web:8bd8796f047482c848bbc1",
+        measurementId: "G-79ZYWRBD70"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const storage = firebase.storage();
+    let messaging = null;
+    try {
+      messaging = firebase.messaging();
+    } catch (err) {
+      console.log("FCM 초기화 실패 (푸시 알림 비활성화):", err);
+    }
+    const messagesRef = db.ref("messages");
+    const usersRef = db.ref("users");
+    const fcmTokensRef = db.ref("fcmTokens");
+
+    // FCM VAPID 키
+    const VAPID_KEY = "BIS2lwuLLzIiAIu9bTQ38C_tdOIj_LIf1VHWsq-W7zedbb44lvM0y9bC_cF8c3Fd2709wA83nHpqZxirsPfiCzE";
+
+    const messagesEl = document.getElementById("messages");
+    const userIdInput = document.getElementById("userIdInput");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const nameInput = document.getElementById("nameInput");
+    const saveNameBtn = document.getElementById("saveNameBtn");
+    const messageInput = document.getElementById("messageInput");
+    const imageInput = document.getElementById("imageInput");
+    const imageBtn = document.getElementById("imageBtn");
+    const sendBtn = document.getElementById("sendBtn");
+    const userStatus = document.getElementById("userStatus");
+    const settingsBtn = document.getElementById("settingsBtn");
+    const modalOverlay = document.getElementById("modalOverlay");
+    const closeModalBtn = document.getElementById("closeModalBtn");
+    const notificationBtn = document.getElementById("notificationBtn");
+    const previewContainer = document.getElementById("previewContainer");
+    const previewCount = document.getElementById("previewCount");
+
+    // 현재 로그인된 아이디 (없으면 null)
+    let currentUserId = null;
+    
+    // 유저 정보 캐시 (실시간 동기화)
+    let usersCache = {};
+
+    // 대기 중인 이미지 파일들 (최대 10장)
+    let pendingImageFiles = [];
+
+    // 중복 전송 방지
+    let lastSentText = "";
+    let lastSentTime = 0;
+
+    // 이전 메시지 로드용
+    let oldestTimestamp = null;
+    let isLoadingMore = false;
+    let noMoreMessages = false;
+
+    // 로컬 스토리지에서 이전 상태 복원
+    const savedUserId = localStorage.getItem("chat_user_id");
+    const savedName = localStorage.getItem("chat_user_name");
+
+    if (savedUserId) {
+      userIdInput.value = savedUserId;
+      loginWithId(savedUserId);
+    } else if (savedName) {
+      nameInput.value = savedName;
+    }
+
+    // 설정 모달 열기/닫기
+    settingsBtn.addEventListener("click", () => {
+      modalOverlay.classList.add("show");
+    });
+    closeModalBtn.addEventListener("click", () => {
+      modalOverlay.classList.remove("show");
+    });
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) {
+        modalOverlay.classList.remove("show");
+      }
+    });
+
+    // Service Worker 등록 및 알림 설정
+    let swRegistration = null;
+    
+    async function registerServiceWorker() {
+      console.log("registerServiceWorker 시작");
+      if ('serviceWorker' in navigator) {
+        try {
+          swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          console.log('Service Worker 등록 성공:', swRegistration);
+        } catch (err) {
+          console.error('Service Worker 등록 실패:', err);
+        }
+      } else {
+        console.log('Service Worker 지원 안 됨');
+      }
+    }
+    registerServiceWorker();
+
+    // 알림 버튼 클릭
+    notificationBtn.addEventListener("click", async () => {
+      console.log("알림 버튼 클릭됨");
+      
+      if (typeof Notification === 'undefined') {
+        alert("이 브라우저에서는 알림이 지원되지 않습니다.\niOS Safari의 경우 홈 화면에 추가 후 이용해주세요.");
+        return;
+      }
+      
+      try {
+        const permission = await Notification.requestPermission();
+        console.log("알림 권한:", permission);
+        if (permission === 'granted') {
+          console.log("Service Worker 등록 시도...");
+          await registerServiceWorker();
+          console.log("swRegistration:", swRegistration);
+          console.log("FCM 설정 시도...");
+          await setupFCM();
+          notificationBtn.textContent = "🔔 알림 켜짐 (갱신됨)";
+          alert("알림이 활성화되었습니다!");
+        } else {
+          alert("알림 권한이 거부되었습니다.");
+        }
+      } catch (err) {
+        console.error("알림 설정 오류:", err);
+        alert("알림 설정 중 오류가 발생했습니다: " + err.message);
+      }
+    });
+
+    // FCM 토큰 발급 및 저장
+    async function setupFCM() {
+      console.log("setupFCM 시작");
+      if (!messaging) {
+        console.log("FCM이 지원되지 않습니다");
+        return;
+      }
+      try {
+        console.log("토큰 발급 시도...");
+        const token = await messaging.getToken({
+          vapidKey: VAPID_KEY,
+          serviceWorkerRegistration: swRegistration
+        });
+        
+        console.log("발급된 토큰:", token);
+        if (token) {
+          const tokenKey = token.replace(/[.#$\/\[\]]/g, '_');
+          console.log("DB에 저장 시도...", tokenKey);
+          await fcmTokensRef.child(tokenKey).set({
+            token: token,
+            name: nameInput.value.trim() || "익명",
+            userId: currentUserId || null,
+            updatedAt: Date.now()
+          });
+          console.log("DB 저장 완료!");
+        } else {
+          console.log("토큰이 null입니다");
+        }
+      } catch (err) {
+        console.error("FCM 토큰 발급 실패:", err);
+      }
+    }
+
+    // 포그라운드 메시지 수신
+    if (messaging) {
+      messaging.onMessage((payload) => {
+        console.log("포그라운드 메시지:", payload);
+        // 창이 포커스를 잃었을 때만 알림 표시 (다른 탭, 다른 앱)
+        if (typeof Notification !== 'undefined' && !document.hasFocus() && Notification.permission === 'granted') {
+          const title = (payload.notification && payload.notification.title) || '새 메시지';
+          const body = (payload.notification && payload.notification.body) || '';
+          new Notification(title, {
+            body: body,
+            icon: '/icon.png'
+          });
+        }
+      });
+    }
+
+    // 알림 상태 초기화
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      notificationBtn.textContent = "🔔 알림 켜짐";
+      registerServiceWorker().then(() => setupFCM());
+    }
+
+    // 클립보드 붙여넣기 (Ctrl+V / Cmd+V)
+    document.addEventListener("paste", (e) => {
+      const items = e.clipboardData && e.clipboardData.items;
+      if (!items) return;
+
+      const imageFiles = [];
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        addImageFiles(imageFiles);
+      }
+    });
+
+    // 이미지 파일들 추가
+    function addImageFiles(files) {
+      for (const file of files) {
+        if (pendingImageFiles.length >= 10) {
+          alert("이미지는 최대 10장까지만 선택할 수 있습니다.");
+          break;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          alert(`${file.name || '이미지'}: 5MB 이하만 가능합니다.`);
+          continue;
+        }
+        pendingImageFiles.push(file);
+      }
+      renderPreviews();
+    }
+
+    // 미리보기 렌더링
+    function renderPreviews() {
+      // 기존 미리보기 아이템들 제거 (카운트 제외)
+      const existingItems = previewContainer.querySelectorAll(".preview-item");
+      existingItems.forEach(item => item.remove());
+
+      if (pendingImageFiles.length === 0) {
+        previewContainer.classList.remove("show");
+        previewCount.textContent = "";
+        return;
+      }
+
+      previewContainer.classList.add("show");
+      previewCount.textContent = `${pendingImageFiles.length}/10`;
+
+      pendingImageFiles.forEach((file, index) => {
+        const item = document.createElement("div");
+        item.className = "preview-item";
+
+        const img = document.createElement("img");
+        const reader = new FileReader();
+        reader.onload = (e) => { img.src = e.target.result; };
+        reader.readAsDataURL(file);
+
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "remove-btn";
+        removeBtn.textContent = "✕";
+        removeBtn.onclick = () => removeImageAt(index);
+
+        item.appendChild(img);
+        item.appendChild(removeBtn);
+        previewContainer.insertBefore(item, previewCount);
+      });
+    }
+
+    // 특정 인덱스의 이미지 제거
+    function removeImageAt(index) {
+      pendingImageFiles.splice(index, 1);
+      renderPreviews();
+    }
+
+    // 로그인 버튼
+    loginBtn.addEventListener("click", () => {
+      const userId = userIdInput.value.trim();
+      if (!userId) {
+        alert("아이디를 입력하세요.");
+        return;
+      }
+      loginWithId(userId);
+    });
+
+    // 아이디로 로그인
+    function loginWithId(userId) {
+      usersRef.child(userId).once("value").then((snapshot) => {
+        if (snapshot.exists()) {
+          // 기존 사용자
+          const userData = snapshot.val();
+          nameInput.value = userData.name || "";
+          currentUserId = userId;
+          localStorage.setItem("chat_user_id", userId);
+          localStorage.setItem("chat_user_name", userData.name || "");
+          updateUIForLogin(true);
+        } else {
+          // 신규 사용자 - 빈 이름으로 생성
+          usersRef.child(userId).set({ name: "" }).then(() => {
+            currentUserId = userId;
+            nameInput.value = "";
+            localStorage.setItem("chat_user_id", userId);
+            updateUIForLogin(true);
+            alert("새 아이디로 등록되었습니다. 닉네임을 설정해주세요.");
+          });
+        }
+        refreshMessages();
+      }).catch((err) => {
+        console.error(err);
+        alert("로그인 중 오류가 발생했습니다.");
+      });
+    }
+
+    // 로그아웃 버튼
+    logoutBtn.addEventListener("click", () => {
+      currentUserId = null;
+      localStorage.removeItem("chat_user_id");
+      userIdInput.value = "";
+      updateUIForLogin(false);
+      refreshMessages();
+    });
+
+    // 로그인 상태에 따른 UI 업데이트
+    function updateUIForLogin(isLoggedIn) {
+      if (isLoggedIn) {
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+        userIdInput.disabled = true;
+        userStatus.textContent = `@${currentUserId}`;
+      } else {
+        loginBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+        userIdInput.disabled = false;
+        userStatus.textContent = "";
+      }
+    }
+
+    // 닉네임 저장
+    saveNameBtn.addEventListener("click", () => {
+      const name = nameInput.value.trim();
+      if (!name) {
+        alert("닉네임을 입력하세요.");
+        return;
+      }
+
+      if (currentUserId) {
+        // 로그인 상태면 Firebase에도 저장
+        usersRef.child(currentUserId).update({ name: name }).then(() => {
+          localStorage.setItem("chat_user_name", name);
+          alert("닉네임 저장 완료");
+        }).catch((err) => {
+          console.error(err);
+          alert("닉네임 저장 중 오류가 발생했습니다.");
+        });
+      } else {
+        // 비로그인 상태면 로컬에만 저장
+        localStorage.setItem("chat_user_name", name);
+        alert("닉네임 저장 완료");
+      }
+    });
+
+    // 메시지 전송
+    async function sendMessage() {
+      const name = nameInput.value.trim();
+      if (!name) {
+        alert("먼저 설정에서 닉네임을 입력하고 저장하세요.");
+        modalOverlay.classList.add("show");
+        return;
+      }
+
+      const text = messageInput.value.trim();
+      const hasImages = pendingImageFiles.length > 0;
+      const hasText = text.length > 0;
+
+      if (!hasImages && !hasText) return;
+
+      const now = Date.now();
+
+      // 중복 전송 방지 (0.3초 내 같은 텍스트)
+      if (hasText && text === lastSentText && now - lastSentTime < 300) {
+        console.log("중복 전송 방지");
+        return;
+      }
+
+      sendBtn.disabled = true;
+      sendBtn.textContent = "⏳";
+
+      try {
+        // 1. 이미지들 먼저 전송
+        for (const file of pendingImageFiles) {
+          await sendImageFile(file);
+        }
+
+        // 2. 텍스트가 있으면 그 다음에 전송
+        if (hasText) {
+          lastSentText = text;
+          lastSentTime = Date.now();
+
+          const messageData = {
+            text: text,
+            timestamp: Date.now()
+          };
+
+          if (currentUserId) {
+            messageData.userId = currentUserId;
+          } else {
+            messageData.name = name;
+          }
+
+          await messagesRef.push(messageData);
+        }
+
+        // 초기화
+        pendingImageFiles = [];
+        renderPreviews();
+        messageInput.value = "";
+
+      } catch (err) {
+        console.error(err);
+        alert("전송 중 오류가 발생했습니다.");
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "전송";
+      }
+    }
+
+    // 이미지 파일 전송 함수
+    async function sendImageFile(file) {
+      const name = nameInput.value.trim();
+
+      const fileName = `${Date.now()}_${file.name || 'image.png'}`;
+      const storageRef = storage.ref(`images/${fileName}`);
+      const metadata = { contentType: file.type };
+      await storageRef.put(file, metadata);
+      const imageUrl = await storageRef.getDownloadURL();
+
+      const messageData = {
+        imageUrl: imageUrl,
+        timestamp: Date.now()
+      };
+
+      if (currentUserId) {
+        messageData.userId = currentUserId;
+      } else {
+        messageData.name = name;
+      }
+
+      await messagesRef.push(messageData);
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    messageInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    // 이미지 버튼 클릭 시 파일 선택 창 열기
+    imageBtn.addEventListener("click", () => {
+      imageInput.click();
+    });
+
+    // 이미지 선택 시 미리보기에 추가
+    imageInput.addEventListener("change", (e) => {
+      const files = Array.from(e.target.files);
+      if (files.length > 0) {
+        addImageFiles(files);
+      }
+      imageInput.value = "";
+    });
+
+    // 메시지 새로고침 (로그인/로그아웃 시)
+    function refreshMessages() {
+      messagesEl.innerHTML = "";
+      oldestTimestamp = null;
+      noMoreMessages = false;
+      messagesRef.limitToLast(100).once("value").then((snapshot) => {
+        snapshot.forEach((child) => {
+          addMessage(child.val(), child.key);
+        });
+      });
+    }
+
+    // 실시간 메시지 수신
+    messagesRef.limitToLast(100).on("child_added", (snapshot) => {
+      addMessage(snapshot.val(), snapshot.key);
+    });
+
+    // 스크롤 맨 위 감지 → 이전 메시지 로드
+    messagesEl.addEventListener("scroll", () => {
+      if (messagesEl.scrollTop < 50 && !isLoadingMore && !noMoreMessages && oldestTimestamp) {
+        loadOlderMessages();
+      }
+    });
+
+    // 이전 메시지 50개 로드
+    async function loadOlderMessages() {
+      isLoadingMore = true;
+      
+      // 현재 첫 번째 메시지 기억
+      const firstMessage = messagesEl.querySelector(".message");
+      
+      // 로딩 표시 추가
+      const loadingEl = document.createElement("div");
+      loadingEl.className = "loading-more";
+      loadingEl.textContent = "이전 메시지 로드 중...";
+      messagesEl.insertBefore(loadingEl, messagesEl.firstChild);
+
+      try {
+        const snapshot = await messagesRef
+          .orderByChild("timestamp")
+          .endBefore(oldestTimestamp)
+          .limitToLast(50)
+          .once("value");
+
+        const messages = [];
+        snapshot.forEach((child) => {
+          messages.push({ key: child.key, val: child.val() });
+        });
+
+        // 로딩 표시 제거
+        loadingEl.remove();
+
+        if (messages.length === 0) {
+          noMoreMessages = true;
+        } else {
+          // 가장 오래된 timestamp로 업데이트
+          const minTimestamp = Math.min(...messages.map(m => m.val.timestamp));
+          oldestTimestamp = minTimestamp;
+
+          // 최신순 정렬 후 맨 앞에 추가 (결과적으로 오래된 게 위로)
+          messages.sort((a, b) => b.val.timestamp - a.val.timestamp);
+          
+          for (const msg of messages) {
+            prependMessage(msg.val, msg.key);
+          }
+
+          // 기존 첫 번째 메시지 위치로 스크롤 복원
+          if (firstMessage) {
+            requestAnimationFrame(() => {
+              messagesEl.scrollTop = firstMessage.offsetTop;
+            });
+          }
+        }
+      } catch (err) {
+        console.error("이전 메시지 로드 실패:", err);
+        loadingEl.remove();
+      } finally {
+        isLoadingMore = false;
+      }
+    }
+
+    // 메시지를 맨 앞에 추가
+    function prependMessage(msg, msgId) {
+      let isMine = false;
+      if (currentUserId && msg.userId) {
+        isMine = msg.userId === currentUserId;
+      } else if (!currentUserId && !msg.userId) {
+        isMine = msg.name === nameInput.value.trim();
+      }
+
+      let displayName;
+      if (msg.userId && usersCache[msg.userId]) {
+        displayName = usersCache[msg.userId].name || msg.userId;
+      } else if (msg.userId) {
+        displayName = msg.userId;
+      } else {
+        displayName = msg.name || "익명";
+      }
+
+      let contentHtml;
+      if (msg.imageUrl) {
+        contentHtml = `<span class="bubble image-bubble"><img src="${escapeHtml(msg.imageUrl)}" onclick="window.open('${escapeHtml(msg.imageUrl)}', '_blank')" alt="이미지" /></span>`;
+      } else {
+        contentHtml = `<span class="bubble">${escapeHtml(msg.text || "")}</span>`;
+      }
+
+      const div = document.createElement("div");
+      div.className = `message ${isMine ? "mine" : "other"}`;
+      if (msgId) div.dataset.msgId = msgId;
+      if (msg.userId) div.dataset.userId = msg.userId;
+      
+      // 다음 메시지(아래쪽)부터 같은 사람인지 확인해서 연속 수 카운트
+      let consecutiveAfter = 0;
+      const allMessages = messagesEl.querySelectorAll(".message");
+      for (let i = 0; i < allMessages.length; i++) {
+        const nextMsg = allMessages[i];
+        const nextUserId = nextMsg.dataset.userId;
+        const nextNameEl = nextMsg.querySelector(".name");
+        const nextName = nextNameEl ? nextNameEl.textContent : null;
+        
+        // 숨겨진 닉네임인 경우 data-sender 확인 필요
+        const nextSender = nextMsg.dataset.sender || nextName;
+        
+        const isSameSender = (msg.userId && msg.userId === nextUserId) || 
+                             (!msg.userId && !nextUserId && displayName === nextSender);
+        
+        if (isSameSender) {
+          consecutiveAfter++;
+        } else {
+          break;
+        }
+      }
+
+      // 이 메시지가 연속의 시작이면 닉네임 표시
+      // 단, 아래로 연속 10개 이상 있으면 닉네임 숨김 (10번째마다 표시되도록)
+      const showName = consecutiveAfter % 10 === 0;
+
+      div.innerHTML = `
+        ${showName ? `<span class="name">${escapeHtml(displayName)}</span>` : ""}
+        <div class="content-row">
+          ${contentHtml}
+          <span class="time">${msg.timestamp ? formatTime(msg.timestamp) : ""}</span>
+        </div>
+      `;
+      
+      // sender 정보 저장 (닉네임이 숨겨진 경우에도 비교 가능하도록)
+      div.dataset.sender = displayName;
+
+      // 다음 메시지(아래쪽)와 같은 사람/같은 시간이면 현재 타임스탬프 숨김
+      const nextMessage = messagesEl.querySelector(".message");
+      if (nextMessage) {
+        const nextUserId = nextMessage.dataset.userId;
+        const nextSender = nextMessage.dataset.sender;
+        const nextTimeEl = nextMessage.querySelector(".time");
+        const nextTime = nextTimeEl ? nextTimeEl.textContent : "";
+        const currentTime = msg.timestamp ? formatTime(msg.timestamp) : "";
+        
+        const isSameSender = (msg.userId && msg.userId === nextUserId) || 
+                             (!msg.userId && !nextUserId && displayName === nextSender);
+        
+        if (isSameSender && nextTime === currentTime) {
+          div.querySelector(".time").style.visibility = "hidden";
+        }
+      }
+      
+      messagesEl.insertBefore(div, messagesEl.firstChild);
+
+      // 가장 오래된 timestamp 업데이트
+      if (!oldestTimestamp || msg.timestamp < oldestTimestamp) {
+        oldestTimestamp = msg.timestamp;
+      }
+    }
+
+    // users 실시간 리스너 - 이름 변경 시 화면 업데이트
+    usersRef.on("value", (snapshot) => {
+      usersCache = snapshot.val() || {};
+      updateDisplayedNames();
+    });
+
+    // 화면에 표시된 이름들 업데이트
+    function updateDisplayedNames() {
+      const messages = messagesEl.querySelectorAll(".message[data-user-id]");
+      messages.forEach((msgEl) => {
+        const userId = msgEl.dataset.userId;
+        if (usersCache[userId]) {
+          const nameEl = msgEl.querySelector(".name");
+          if (nameEl) {
+            nameEl.textContent = usersCache[userId].name || userId;
+          }
+        }
+      });
+    }
+
+    function formatTime(ts) {
+      const d = new Date(ts);
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    }
+
+    function addMessage(msg, msgId) {
+      // 내 메시지 판별
+      let isMine = false;
+      if (currentUserId && msg.userId) {
+        isMine = msg.userId === currentUserId;
+      } else if (!currentUserId && !msg.userId) {
+        isMine = msg.name === nameInput.value.trim();
+      }
+
+      // 이름 결정: userId가 있으면 캐시에서 조회, 없으면 저장된 name 사용
+      let displayName;
+      if (msg.userId && usersCache[msg.userId]) {
+        displayName = usersCache[msg.userId].name || msg.userId;
+      } else if (msg.userId) {
+        displayName = msg.userId; // 캐시에 없으면 일단 userId 표시
+      } else {
+        displayName = msg.name || "익명";
+      }
+
+      // 메시지 내용 (텍스트 또는 이미지)
+      let contentHtml;
+      if (msg.imageUrl) {
+        contentHtml = `<span class="bubble image-bubble"><img src="${escapeHtml(msg.imageUrl)}" onclick="window.open('${escapeHtml(msg.imageUrl)}', '_blank')" alt="이미지" onload="var m=document.getElementById('messages');if(m)m.scrollTop=m.scrollHeight;" /></span>`;
+      } else {
+        contentHtml = `<span class="bubble">${escapeHtml(msg.text || "")}</span>`;
+      }
+
+      const div = document.createElement("div");
+      div.className = `message ${isMine ? "mine" : "other"}`;
+      if (msgId) div.dataset.msgId = msgId;
+      if (msg.userId) div.dataset.userId = msg.userId;
+      
+      // 같은 사람의 연속 메시지 수 카운트 (이전 메시지들 확인)
+      let consecutiveCount = 0;
+      const allMessages = messagesEl.querySelectorAll(".message");
+      for (let i = allMessages.length - 1; i >= 0; i--) {
+        const prevMsg = allMessages[i];
+        const prevUserId = prevMsg.dataset.userId;
+        const prevSender = prevMsg.dataset.sender;
+        
+        const isSameSender = (msg.userId && msg.userId === prevUserId) || 
+                             (!msg.userId && !prevUserId && displayName === prevSender);
+        
+        if (isSameSender) {
+          consecutiveCount++;
+        } else {
+          break;
+        }
+      }
+
+      // 연속 10개 이하면 닉네임 숨김 (10, 20, 30번째에 다시 표시)
+      const showName = consecutiveCount % 10 === 0;
+
+      div.innerHTML = `
+        ${showName ? `<span class="name">${escapeHtml(displayName)}</span>` : ""}
+        <div class="content-row">
+          ${contentHtml}
+          <span class="time">${msg.timestamp ? formatTime(msg.timestamp) : ""}</span>
+        </div>
+      `;
+
+      // sender 정보 저장 (닉네임이 숨겨진 경우에도 비교 가능하도록)
+      div.dataset.sender = displayName;
+
+      // 이전 메시지와 같은 사람/같은 시간이면 이전 타임스탬프 숨김
+      const prevMessage = messagesEl.lastElementChild;
+      if (prevMessage && prevMessage.classList.contains("message")) {
+        const prevUserId = prevMessage.dataset.userId;
+        const prevSender = prevMessage.dataset.sender;
+        const prevTimeEl = prevMessage.querySelector(".time");
+        const prevTime = prevTimeEl ? prevTimeEl.textContent : "";
+        const currentTime = msg.timestamp ? formatTime(msg.timestamp) : "";
+        
+        const isSameSender = (msg.userId && msg.userId === prevUserId) || 
+                             (!msg.userId && !prevUserId && displayName === prevSender);
+        
+        if (isSameSender && prevTime === currentTime) {
+          if (prevTimeEl) prevTimeEl.style.visibility = "hidden";
+        }
+      }
+      
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      // 가장 오래된 timestamp 추적
+      if (msg.timestamp && (!oldestTimestamp || msg.timestamp < oldestTimestamp)) {
+        oldestTimestamp = msg.timestamp;
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // 초기 UI 상태
+    if (savedUserId) {
+      updateUIForLogin(true);
+    }
+  </script>
+</body>
+</html>
