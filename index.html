@@ -60,6 +60,7 @@
       display: flex;
       align-items: flex-end;
       gap: 6px;
+      position: relative;
     }
     .message.mine {
       margin-left: auto;
@@ -97,9 +98,14 @@
       font-size: 11px;
       color: #888;
       flex-shrink: 0;
+      transition: opacity 0.2s;
     }
     .message.mine .time {
       color: #aaa;
+    }
+    .message .content-row:hover .time,
+    .message .content-row.show-reply .time {
+      opacity: 0;
     }
     .message .bubble img {
       max-width: 200px;
@@ -252,6 +258,112 @@
     button.secondary {
       background: #81C784;
     }
+    /* 답장 버튼 */
+    .reply-btn {
+      background: transparent;
+      color: #888;
+      font-size: 16px;
+      padding: 4px 8px;
+      margin-left: 8px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .message:hover .reply-btn {
+      opacity: 1;
+    }
+    /* 답장 모드 UI */
+    .reply-mode {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #f0f0f0;
+      border-radius: 8px;
+      border-left: 3px solid #4CAF50;
+    }
+    .reply-button {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      background: transparent;
+      color: #666;
+      font-size: 16px;
+      padding: 4px 8px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .message .content-row:hover .reply-button {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .message .content-row.show-reply .reply-button {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .message.mine .reply-button {
+      right: auto;
+      left: 0;
+    }
+    .reply-indicator {
+      margin: 4px 0;
+      padding: 6px 10px;
+      background: #f5f5f5;
+      border-left: 3px solid #4CAF50;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #666;
+      cursor: pointer;
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .reply-indicator:hover {
+      background: #e8e8e8;
+    }
+    /* 컨텍스트 메뉴 */
+    .context-menu {
+      position: fixed;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      padding: 4px 0;
+      z-index: 1000;
+      display: none;
+    }
+    .context-menu.show {
+      display: block;
+    }
+    .context-menu-item {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .context-menu-item:hover {
+      background: #f0f0f0;
+    }
+    /* 수정 모드 */
+    .edit-mode-indicator {
+      display: none;
+      padding: 8px 12px;
+      background: #fff3cd;
+      border-left: 3px solid #ffc107;
+      font-size: 12px;
+      color: #856404;
+      align-items: center;
+      gap: 8px;
+    }
+    .edit-mode-indicator.show {
+      display: flex;
+    }
+    .edited-badge {
+      font-size: 10px;
+      color: #999;
+      margin-left: 4px;
+    }
   </style>
 </head>
 <body>
@@ -265,6 +377,19 @@
     </div>
     <div id="messages" class="messages"></div>
     <div class="footer">
+      <!-- 수정 모드 표시 -->
+      <div id="editMode" class="edit-mode-indicator">
+        <div style="flex:1;">메시지 수정 중</div>
+        <button id="cancelEditBtn" style="background:transparent;padding:4px 8px;font-size:14px;color:#856404;">취소</button>
+      </div>
+      <!-- 답장 모드 표시 -->
+      <div id="replyMode" class="reply-mode" style="display:none;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;color:#666;">답장</div>
+          <div id="replyPreview" style="font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+        </div>
+        <button id="cancelReplyBtn" style="background:transparent;padding:4px 8px;font-size:18px;">✕</button>
+      </div>
       <div id="previewContainer" class="preview-container">
         <span id="previewCount" class="preview-count"></span>
       </div>
@@ -303,17 +428,18 @@
     </div>
   </div>
 
+  <!-- 컨텍스트 메뉴 -->
+  <div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" id="contextEdit">수정</div>
+    <div class="context-menu-item" id="contextReply">답장</div>
+  </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-messaging-compat.js"></script>
 
   <script>
-    window.onerror = function(msg, url, line, col, error) {
-      alert("에러: " + msg + "\n라인: " + line);
-      return false;
-    };
-
     const firebaseConfig = {
         apiKey: "AIzaSyDVn1_utqTMBFOXnGNAt78i1LH8nH9AWjs",
         authDomain: "mylove-1e603.firebaseapp.com",
@@ -358,12 +484,32 @@
     const notificationBtn = document.getElementById("notificationBtn");
     const previewContainer = document.getElementById("previewContainer");
     const previewCount = document.getElementById("previewCount");
+    const replyMode = document.getElementById("replyMode");
+    const replyPreview = document.getElementById("replyPreview");
+    const cancelReplyBtn = document.getElementById("cancelReplyBtn");
+    const editMode = document.getElementById("editMode");
+    const cancelEditBtn = document.getElementById("cancelEditBtn");
+    const contextMenu = document.getElementById("contextMenu");
+    const contextEdit = document.getElementById("contextEdit");
+    const contextReply = document.getElementById("contextReply");
 
     // 현재 로그인된 아이디 (없으면 null)
     let currentUserId = null;
     
     // 유저 정보 캐시 (실시간 동기화)
     let usersCache = {};
+
+    // 답장 모드 상태
+    let replyToMessageId = null;
+    let replyToMessage = null;
+
+    // 수정 모드 상태
+    let editingMessageId = null;
+    let editingOriginalText = null;
+
+    // 컨텍스트 메뉴 대상
+    let contextTargetMessageId = null;
+    let contextTargetMessage = null;
 
     // 대기 중인 이미지 파일들 (최대 10장)
     let pendingImageFiles = [];
@@ -579,6 +725,55 @@
       renderPreviews();
     }
 
+    // 답장 모드 활성화
+    function enterReplyMode(messageId, messageData) {
+      exitEditMode(); // 수정 모드 해제
+      replyToMessageId = messageId;
+      replyToMessage = messageData;
+      
+      const previewText = messageData.text || (messageData.imageUrl ? "사진" : "");
+      const displayName = messageData.userId && usersCache[messageData.userId] 
+        ? usersCache[messageData.userId].name || messageData.userId
+        : messageData.name || "익명";
+      
+      replyPreview.textContent = `${displayName}: ${previewText}`;
+      replyMode.style.display = "flex";
+      messageInput.focus();
+    }
+
+    // 답장 모드 해제
+    function exitReplyMode() {
+      replyToMessageId = null;
+      replyToMessage = null;
+      replyMode.style.display = "none";
+    }
+
+    // 수정 모드 활성화
+    function enterEditMode(messageId, messageText) {
+      exitReplyMode(); // 답장 모드 해제
+      editingMessageId = messageId;
+      editingOriginalText = messageText;
+      messageInput.value = messageText;
+      editMode.classList.add("show");
+      sendBtn.textContent = "수정";
+      messageInput.focus();
+    }
+
+    // 수정 모드 해제
+    function exitEditMode() {
+      editingMessageId = null;
+      editingOriginalText = null;
+      messageInput.value = "";
+      editMode.classList.remove("show");
+      sendBtn.textContent = "전송";
+    }
+
+    // 답장 취소 버튼
+    cancelReplyBtn.addEventListener("click", exitReplyMode);
+
+    // 수정 취소 버튼
+    cancelEditBtn.addEventListener("click", exitEditMode);
+
     // 로그인 버튼
     loginBtn.addEventListener("click", () => {
       const userId = userIdInput.value.trim();
@@ -675,6 +870,35 @@
       }
 
       const text = messageInput.value.trim();
+      
+      // 수정 모드인 경우
+      if (editingMessageId) {
+        if (!text) {
+          alert("메시지 내용을 입력하세요.");
+          return;
+        }
+        
+        sendBtn.disabled = true;
+        sendBtn.textContent = "⏳";
+        
+        try {
+          await messagesRef.child(editingMessageId).update({
+            text: text,
+            edited: true,
+            editedAt: Date.now()
+          });
+          exitEditMode();
+        } catch (err) {
+          console.error(err);
+          alert("수정 중 오류가 발생했습니다.");
+        } finally {
+          sendBtn.disabled = false;
+          sendBtn.textContent = "수정";
+        }
+        return;
+      }
+
+      // 일반 전송 모드
       const hasImages = pendingImageFiles.length > 0;
       const hasText = text.length > 0;
 
@@ -713,7 +937,21 @@
             messageData.name = name;
           }
 
+          // 답장 정보 추가
+          if (replyToMessageId) {
+            messageData.replyTo = {
+              messageId: replyToMessageId,
+              text: replyToMessage.text || (replyToMessage.imageUrl ? "사진" : ""),
+              name: replyToMessage.userId && usersCache[replyToMessage.userId]
+                ? usersCache[replyToMessage.userId].name || replyToMessage.userId
+                : replyToMessage.name || "익명"
+            };
+          }
+
           await messagesRef.push(messageData);
+          
+          // 답장 모드 해제
+          exitReplyMode();
         }
 
         // 초기화
@@ -790,11 +1028,148 @@
       addMessage(snapshot.val(), snapshot.key);
     });
 
+    // 실시간 메시지 수정
+    messagesRef.on("child_changed", (snapshot) => {
+      const msgId = snapshot.key;
+      const msgData = snapshot.val();
+      const msgEl = document.querySelector(`[data-msg-id="${msgId}"]`);
+      
+      if (msgEl && msgData.text) {
+        const bubbleEl = msgEl.querySelector('.bubble:not(.image-bubble)');
+        const timeEl = msgEl.querySelector('.time');
+        if (bubbleEl) {
+          bubbleEl.textContent = msgData.text;
+        }
+        if (timeEl && msgData.edited) {
+          const timeText = msgData.timestamp ? formatTime(msgData.timestamp) : "";
+          timeEl.innerHTML = `${timeText}<span class="edited-badge">(수정됨)</span>`;
+        }
+      }
+    });
+
     // 스크롤 맨 위 감지 → 이전 메시지 로드
     messagesEl.addEventListener("scroll", () => {
       if (messagesEl.scrollTop < 50 && !isLoadingMore && !noMoreMessages && oldestTimestamp) {
         loadOlderMessages();
       }
+    });
+
+    // 모바일: 말풍선 탭하면 답장 버튼 토글
+    messagesEl.addEventListener("click", (e) => {
+      const contentRow = e.target.closest(".content-row");
+      if (contentRow && 
+          !e.target.closest(".reply-button") && 
+          !e.target.closest(".reply-indicator") &&
+          !e.target.closest(".time") &&
+          !e.target.closest("img")) {
+        // 다른 모든 content-row의 show-reply 제거
+        messagesEl.querySelectorAll(".content-row.show-reply").forEach(el => {
+          if (el !== contentRow) el.classList.remove("show-reply");
+        });
+        // 현재 content-row 토글
+        contentRow.classList.toggle("show-reply");
+      }
+    });
+
+    // 컨텍스트 메뉴 (우클릭)
+    messagesEl.addEventListener("contextmenu", (e) => {
+      const messageEl = e.target.closest(".message");
+      if (!messageEl) return;
+      
+      e.preventDefault();
+      
+      const msgId = messageEl.dataset.msgId;
+      if (!msgId) return;
+      
+      messagesRef.child(msgId).once("value").then((snapshot) => {
+        if (!snapshot.exists()) return;
+        
+        const msg = snapshot.val();
+        contextTargetMessageId = msgId;
+        contextTargetMessage = msg;
+        
+        // 내 메시지인지 확인
+        const isMine = (currentUserId && msg.userId === currentUserId) || 
+                       (!currentUserId && !msg.userId && msg.name === nameInput.value.trim());
+        
+        // 텍스트 메시지만 수정 가능
+        const canEdit = isMine && msg.text && !msg.imageUrl;
+        
+        // 메뉴 항목 표시/숨김
+        contextEdit.style.display = canEdit ? "block" : "none";
+        contextReply.style.display = "block";
+        
+        // 메뉴 위치
+        contextMenu.style.left = e.pageX + "px";
+        contextMenu.style.top = e.pageY + "px";
+        contextMenu.classList.add("show");
+      });
+    });
+
+    // 길게 누르기 (모바일)
+    let longPressTimer = null;
+    messagesEl.addEventListener("touchstart", (e) => {
+      const messageEl = e.target.closest(".message");
+      if (!messageEl) return;
+      
+      longPressTimer = setTimeout(() => {
+        const msgId = messageEl.dataset.msgId;
+        if (!msgId) return;
+        
+        messagesRef.child(msgId).once("value").then((snapshot) => {
+          if (!snapshot.exists()) return;
+          
+          const msg = snapshot.val();
+          contextTargetMessageId = msgId;
+          contextTargetMessage = msg;
+          
+          const isMine = (currentUserId && msg.userId === currentUserId) || 
+                         (!currentUserId && !msg.userId && msg.name === nameInput.value.trim());
+          
+          const canEdit = isMine && msg.text && !msg.imageUrl;
+          
+          contextEdit.style.display = canEdit ? "block" : "none";
+          contextReply.style.display = "block";
+          
+          const touch = e.touches[0];
+          contextMenu.style.left = touch.pageX + "px";
+          contextMenu.style.top = touch.pageY + "px";
+          contextMenu.classList.add("show");
+        });
+      }, 500);
+    });
+
+    messagesEl.addEventListener("touchend", () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+
+    messagesEl.addEventListener("touchmove", () => {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+      }
+    });
+
+    // 컨텍스트 메뉴 닫기
+    document.addEventListener("click", () => {
+      contextMenu.classList.remove("show");
+    });
+
+    // 수정 메뉴 클릭
+    contextEdit.addEventListener("click", (e) => {
+      e.stopPropagation();
+      enterEditMode(contextTargetMessageId, contextTargetMessage.text);
+      contextMenu.classList.remove("show");
+    });
+
+    // 답장 메뉴 클릭
+    contextReply.addEventListener("click", (e) => {
+      e.stopPropagation();
+      enterReplyMode(contextTargetMessageId, contextTargetMessage);
+      contextMenu.classList.remove("show");
     });
 
     // 이전 메시지 50개 로드
@@ -910,11 +1285,19 @@
       // 단, 아래로 연속 10개 이상 있으면 닉네임 숨김 (10번째마다 표시되도록)
       const showName = consecutiveAfter % 10 === 0;
 
+      // 답장 표시 HTML
+      let replyHtml = "";
+      if (msg.replyTo) {
+        replyHtml = `<div class="reply-indicator" onclick="scrollToMessage('${msg.replyTo.messageId}')">↩ ${escapeHtml(msg.replyTo.name)}: ${escapeHtml(msg.replyTo.text.substring(0, 50))}${msg.replyTo.text.length > 50 ? '...' : ''}</div>`;
+      }
+
       div.innerHTML = `
         ${showName ? `<span class="name">${escapeHtml(displayName)}</span>` : ""}
+        ${replyHtml}
         <div class="content-row">
           ${contentHtml}
-          <span class="time">${msg.timestamp ? formatTime(msg.timestamp) : ""}</span>
+          <span class="time">${msg.timestamp ? formatTime(msg.timestamp) : ""}${msg.edited ? '<span class="edited-badge">(수정됨)</span>' : ''}</span>
+          <button class="reply-button" onclick="replyToMsg('${msgId}')">↩</button>
         </div>
       `;
       
@@ -1024,11 +1407,19 @@
       // 연속 10개 이하면 닉네임 숨김 (10, 20, 30번째에 다시 표시)
       const showName = consecutiveCount % 10 === 0;
 
+      // 답장 표시 HTML
+      let replyHtml = "";
+      if (msg.replyTo) {
+        replyHtml = `<div class="reply-indicator" onclick="scrollToMessage('${msg.replyTo.messageId}')">↩ ${escapeHtml(msg.replyTo.name)}: ${escapeHtml(msg.replyTo.text.substring(0, 50))}${msg.replyTo.text.length > 50 ? '...' : ''}</div>`;
+      }
+
       div.innerHTML = `
         ${showName ? `<span class="name">${escapeHtml(displayName)}</span>` : ""}
+        ${replyHtml}
         <div class="content-row">
           ${contentHtml}
-          <span class="time">${msg.timestamp ? formatTime(msg.timestamp) : ""}</span>
+          <span class="time">${msg.timestamp ? formatTime(msg.timestamp) : ""}${msg.edited ? '<span class="edited-badge">(수정됨)</span>' : ''}</span>
+          <button class="reply-button" onclick="replyToMsg('${msgId}')">↩</button>
         </div>
       `;
 
@@ -1069,6 +1460,30 @@
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
     }
+
+    // 답장 버튼 클릭 핸들러 (전역)
+    window.replyToMsg = function(messageId) {
+      messagesRef.child(messageId).once("value").then((snapshot) => {
+        if (snapshot.exists()) {
+          enterReplyMode(messageId, snapshot.val());
+        }
+      });
+    };
+
+    // 원본 메시지로 스크롤 (연두색 하이라이트)
+    window.scrollToMessage = function(messageId) {
+      const targetEl = document.querySelector(`[data-msg-id="${messageId}"]`);
+      if (targetEl) {
+        targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        targetEl.style.transition = "background-color 0.6s ease";
+        targetEl.style.backgroundColor = "#c8e6c9";
+        setTimeout(() => {
+          targetEl.style.backgroundColor = "";
+        }, 1500);
+      } else {
+        alert("원본 메시지를 찾을 수 없습니다.");
+      }
+    };
 
     // 초기 UI 상태
     if (savedUserId) {
