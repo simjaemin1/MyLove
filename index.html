@@ -6,12 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
   <!-- PWA 설정 -->
-  <link rel="manifest" href="/manifest.json" />
+  <link rel="manifest" href="/MyLove/manifest.json" />
   <meta name="theme-color" content="#2E7D32" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Asung HMP" />
-  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <link rel="apple-touch-icon" href="/MyLove/icon-192.png" />
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -571,7 +571,7 @@
       console.log("registerServiceWorker 시작");
       if ('serviceWorker' in navigator) {
         try {
-          swRegistration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          swRegistration = await navigator.serviceWorker.register('/MyLove/firebase-messaging-sw.js');
           console.log('Service Worker 등록 성공:', swRegistration);
         } catch (err) {
           console.error('Service Worker 등록 실패:', err);
