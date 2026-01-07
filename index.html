@@ -103,6 +103,14 @@
       display: inline-block;
       padding: 8px 12px;
     }
+    @media (max-width: 768px) {
+      .message .bubble {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+      }
+    }
     .message .name {
       font-weight: 600;
       font-size: 14px;
@@ -344,23 +352,32 @@
       position: fixed;
       background: white;
       border: 1px solid #ccc;
-      border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      padding: 4px 0;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      padding: 8px 0;
       z-index: 1000;
       display: none;
+      min-width: 200px;
     }
     .context-menu.show {
       display: block;
     }
     .context-menu-item {
-      padding: 10px 20px;
+      padding: 14px 20px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 16px;
       white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
     .context-menu-item:hover {
       background: #f0f0f0;
+    }
+    .context-menu-item .icon {
+      font-size: 18px;
+      width: 20px;
+      text-align: center;
     }
     /* 수정 모드 */
     .edit-mode-indicator {
@@ -380,6 +397,77 @@
       font-size: 10px;
       color: #999;
       margin-left: 4px;
+    }
+    /* 이모지 피커 */
+    .emoji-picker {
+      position: fixed;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      padding: 12px;
+      z-index: 1001;
+      display: none;
+      width: 320px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .emoji-picker.show {
+      display: block;
+    }
+    .emoji-picker .emoji-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
+    }
+    .emoji-picker .emoji-item {
+      font-size: 28px;
+      padding: 8px;
+      cursor: pointer;
+      text-align: center;
+      border-radius: 6px;
+      transition: background 0.1s;
+    }
+    .emoji-picker .emoji-item:hover {
+      background: #f0f0f0;
+    }
+    .emoji-picker .emoji-header {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #666;
+    }
+    /* 반응 표시 */
+    .reactions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .reaction {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: #f0f0f0;
+      border-radius: 12px;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .reaction:hover {
+      background: #e0e0e0;
+    }
+    .reaction.active {
+      background: #c8e6c9;
+      border: 1px solid #4CAF50;
+    }
+    .reaction .emoji {
+      font-size: 16px;
+    }
+    .reaction .count {
+      font-size: 12px;
+      color: #666;
     }
   </style>
 </head>
@@ -447,8 +535,28 @@
 
   <!-- 컨텍스트 메뉴 -->
   <div id="contextMenu" class="context-menu">
-    <div class="context-menu-item" id="contextEdit">수정</div>
-    <div class="context-menu-item" id="contextReply">답장</div>
+    <div class="context-menu-item" id="contextReply">
+      <span class="icon">💬</span>
+      <span>답장</span>
+    </div>
+    <div class="context-menu-item" id="contextEdit">
+      <span class="icon">✏️</span>
+      <span>수정</span>
+    </div>
+    <div class="context-menu-item" id="contextCopy">
+      <span class="icon">📋</span>
+      <span>복사</span>
+    </div>
+    <div class="context-menu-item" id="contextReaction">
+      <span class="icon">😀</span>
+      <span>반응 추가</span>
+    </div>
+  </div>
+
+  <!-- 이모지 피커 -->
+  <div id="emojiPicker" class="emoji-picker">
+    <div class="emoji-header">이모지 선택</div>
+    <div class="emoji-grid" id="emojiGrid"></div>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
@@ -509,6 +617,10 @@
     const contextMenu = document.getElementById("contextMenu");
     const contextEdit = document.getElementById("contextEdit");
     const contextReply = document.getElementById("contextReply");
+    const contextCopy = document.getElementById("contextCopy");
+    const contextReaction = document.getElementById("contextReaction");
+    const emojiPicker = document.getElementById("emojiPicker");
+    const emojiGrid = document.getElementById("emojiGrid");
 
     // 현재 로그인된 아이디 (없으면 null)
     let currentUserId = null;
@@ -527,6 +639,50 @@
     // 컨텍스트 메뉴 대상
     let contextTargetMessageId = null;
     let contextTargetMessage = null;
+
+    // 자주 쓰는 이모지 리스트
+    const popularEmojis = [
+      "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂",
+      "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩",
+      "😘", "😗", "😚", "😙", "🥲", "😋", "😛", "😜",
+      "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🤐",
+      "🤨", "😐", "😑", "😶", "😏", "😒", "🙄", "😬",
+      "🤥", "😌", "😔", "😪", "🤤", "😴", "😷", "🤒",
+      "🤕", "🤢", "🤮", "🤧", "🥵", "🥶", "😶‍🌫️", "😵",
+      "🤯", "🤠", "🥳", "😎", "🤓", "🧐", "😕", "😟",
+      "🙁", "☹️", "😮", "😯", "😲", "😳", "🥺", "😦",
+      "😧", "😨", "😰", "😥", "😢", "😭", "😱", "😖",
+      "😣", "😞", "😓", "😩", "😫", "🥱", "😤", "😡",
+      "😠", "🤬", "😈", "👿", "💀", "☠️", "💩", "🤡",
+      "👹", "👺", "👻", "👽", "👾", "🤖", "😺", "😸",
+      "😹", "😻", "😼", "😽", "🙀", "😿", "😾", "❤️",
+      "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎",
+      "💔", "❤️‍🔥", "❤️‍🩹", "💕", "💞", "💓", "💗", "💖",
+      "💘", "💝", "💟", "☮️", "✝️", "☪️", "🕉️", "☸️",
+      "✡️", "🔯", "🕎", "☯️", "☦️", "🛐", "⛎", "♈",
+      "♉", "♊", "♋", "♌", "♍", "♎", "♏", "♐",
+      "♑", "♒", "♓", "🆔", "⚛️", "🉑", "☢️", "☣️",
+      "👍", "👎", "👌", "✌️", "🤞", "🤟", "🤘", "🤙",
+      "👈", "👉", "👆", "👇", "☝️", "✋", "🤚", "🖐️",
+      "🖖", "👋", "🤝", "💪", "🦾", "🦿", "🦵", "🦶",
+      "👂", "🦻", "👃", "🧠", "🫀", "🫁", "🦷", "🦴",
+      "👀", "👁️", "👅", "👄", "💋", "🩸", "🔥", "💧",
+      "💦", "💨", "🌟", "⭐", "✨", "⚡", "☄️", "💥",
+      "🎉", "🎊", "🎈", "🎁", "🏆", "🥇", "🥈", "🥉"
+    ];
+
+    // 이모지 피커 초기화
+    function initEmojiPicker() {
+      emojiGrid.innerHTML = "";
+      popularEmojis.forEach(emoji => {
+        const item = document.createElement("div");
+        item.className = "emoji-item";
+        item.textContent = emoji;
+        item.onclick = () => addReaction(emoji);
+        emojiGrid.appendChild(item);
+      });
+    }
+    initEmojiPicker();
 
     // 대기 중인 이미지 파일들 (최대 10장)
     let pendingImageFiles = [];
@@ -1051,15 +1207,32 @@
       const msgData = snapshot.val();
       const msgEl = document.querySelector(`[data-msg-id="${msgId}"]`);
       
-      if (msgEl && msgData.text) {
-        const bubbleEl = msgEl.querySelector('.bubble:not(.image-bubble)');
-        const timeEl = msgEl.querySelector('.time');
-        if (bubbleEl) {
-          bubbleEl.textContent = msgData.text;
+      if (msgEl) {
+        // 텍스트 수정
+        if (msgData.text) {
+          const bubbleEl = msgEl.querySelector('.bubble:not(.image-bubble)');
+          const timeEl = msgEl.querySelector('.time');
+          if (bubbleEl) {
+            bubbleEl.textContent = msgData.text;
+          }
+          if (timeEl && msgData.edited) {
+            const timeText = msgData.timestamp ? formatTime(msgData.timestamp) : "";
+            timeEl.innerHTML = `${timeText}<span class="edited-badge">(수정됨)</span>`;
+          }
         }
-        if (timeEl && msgData.edited) {
-          const timeText = msgData.timestamp ? formatTime(msgData.timestamp) : "";
-          timeEl.innerHTML = `${timeText}<span class="edited-badge">(수정됨)</span>`;
+        
+        // 반응 업데이트
+        const existingReactions = msgEl.querySelector('.reactions');
+        const newReactionsHtml = getReactionsHtml(msgData, msgId);
+        
+        if (existingReactions) {
+          if (newReactionsHtml) {
+            existingReactions.outerHTML = newReactionsHtml;
+          } else {
+            existingReactions.remove();
+          }
+        } else if (newReactionsHtml) {
+          msgEl.insertAdjacentHTML('beforeend', newReactionsHtml);
         }
       }
     });
@@ -1088,6 +1261,39 @@
       }
     });
 
+    // 컨텍스트 메뉴 위치 조정 (화면 밖으로 안 나가게)
+    function positionContextMenu(x, y) {
+      // 일단 위치 설정
+      contextMenu.style.left = x + "px";
+      contextMenu.style.top = y + "px";
+      contextMenu.classList.add("show");
+      
+      // 메뉴 크기 측정
+      const menuRect = contextMenu.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+      
+      // 오른쪽으로 넘어가면 왼쪽으로
+      if (menuRect.right > windowWidth) {
+        contextMenu.style.left = (x - menuRect.width) + "px";
+      }
+      
+      // 아래로 넘어가면 위로
+      if (menuRect.bottom > windowHeight) {
+        contextMenu.style.top = (y - menuRect.height) + "px";
+      }
+      
+      // 왼쪽으로 넘어가면 오른쪽으로
+      if (menuRect.left < 0) {
+        contextMenu.style.left = "10px";
+      }
+      
+      // 위로 넘어가면 아래로
+      if (menuRect.top < 0) {
+        contextMenu.style.top = "10px";
+      }
+    }
+
     // 컨텍스트 메뉴 (우클릭)
     messagesEl.addEventListener("contextmenu", (e) => {
       const messageEl = e.target.closest(".message");
@@ -1112,14 +1318,14 @@
         // 텍스트 메시지만 수정 가능
         const canEdit = isMine && msg.text && !msg.imageUrl;
         
-        // 메뉴 항목 표시/숨김
-        contextEdit.style.display = canEdit ? "block" : "none";
-        contextReply.style.display = "block";
+        // 메뉴 항목 표시/숨김 (순서: 답장, 수정, 복사, 반응)
+        contextReply.style.display = "flex";
+        contextEdit.style.display = canEdit ? "flex" : "none";
+        contextCopy.style.display = msg.text ? "flex" : "none";
+        contextReaction.style.display = "flex";
         
-        // 메뉴 위치
-        contextMenu.style.left = e.pageX + "px";
-        contextMenu.style.top = e.pageY + "px";
-        contextMenu.classList.add("show");
+        // 메뉴 위치 (화면 밖으로 안 나가게)
+        positionContextMenu(e.pageX, e.pageY);
       });
     });
 
@@ -1145,13 +1351,13 @@
           
           const canEdit = isMine && msg.text && !msg.imageUrl;
           
-          contextEdit.style.display = canEdit ? "block" : "none";
-          contextReply.style.display = "block";
+          contextReply.style.display = "flex";
+          contextEdit.style.display = canEdit ? "flex" : "none";
+          contextCopy.style.display = msg.text ? "flex" : "none";
+          contextReaction.style.display = "flex";
           
           const touch = e.touches[0];
-          contextMenu.style.left = touch.pageX + "px";
-          contextMenu.style.top = touch.pageY + "px";
-          contextMenu.classList.add("show");
+          positionContextMenu(touch.pageX, touch.pageY);
         });
       }, 500);
     });
@@ -1173,7 +1379,88 @@
     // 컨텍스트 메뉴 닫기
     document.addEventListener("click", () => {
       contextMenu.classList.remove("show");
+      emojiPicker.classList.remove("show");
     });
+
+    // 복사 메뉴 클릭
+    contextCopy.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      
+      if (contextTargetMessage && contextTargetMessage.text) {
+        try {
+          await navigator.clipboard.writeText(contextTargetMessage.text);
+          alert("클립보드에 복사되었습니다!");
+        } catch (err) {
+          console.error("복사 실패:", err);
+          alert("복사에 실패했습니다.");
+        }
+      }
+      contextMenu.classList.remove("show");
+    });
+
+    // 반응 추가 메뉴 클릭
+    contextReaction.addEventListener("click", (e) => {
+      e.stopPropagation();
+      
+      // 이모지 피커 위치 설정
+      const menuRect = contextMenu.getBoundingClientRect();
+      const pickerWidth = 320;
+      const pickerHeight = 400;
+      
+      let left = menuRect.right + 10;
+      let top = menuRect.top;
+      
+      // 오른쪽으로 넘어가면 왼쪽에 표시
+      if (left + pickerWidth > window.innerWidth) {
+        left = menuRect.left - pickerWidth - 10;
+      }
+      
+      // 왼쪽도 넘어가면 중앙에
+      if (left < 0) {
+        left = (window.innerWidth - pickerWidth) / 2;
+      }
+      
+      // 아래로 넘어가면 위로 조정
+      if (top + pickerHeight > window.innerHeight) {
+        top = window.innerHeight - pickerHeight - 10;
+      }
+      
+      // 위로 넘어가면 아래로
+      if (top < 0) {
+        top = 10;
+      }
+      
+      emojiPicker.style.left = left + "px";
+      emojiPicker.style.top = top + "px";
+      emojiPicker.classList.add("show");
+      contextMenu.classList.remove("show");
+    });
+
+    // 반응 추가 함수
+    async function addReaction(emoji) {
+      if (!contextTargetMessageId) return;
+      
+      const userName = nameInput.value.trim() || "익명";
+      const reactionPath = `messages/${contextTargetMessageId}/reactions/${emoji}`;
+      
+      try {
+        const snapshot = await db.ref(reactionPath).once("value");
+        const reactions = snapshot.val() || {};
+        
+        // 이미 반응했는지 확인
+        if (reactions[userName]) {
+          // 반응 취소
+          await db.ref(`${reactionPath}/${userName}`).remove();
+        } else {
+          // 반응 추가
+          await db.ref(`${reactionPath}/${userName}`).set(true);
+        }
+      } catch (err) {
+        console.error("반응 추가 실패:", err);
+      }
+      
+      emojiPicker.classList.remove("show");
+    }
 
     // 수정 메뉴 클릭
     contextEdit.addEventListener("click", (e) => {
@@ -1316,6 +1603,7 @@
           <span class="time">${msg.timestamp ? formatTime(msg.timestamp) : ""}${msg.edited ? '<span class="edited-badge">(수정됨)</span>' : ''}</span>
           <button class="reply-button" onclick="replyToMsg('${msgId}')">↩</button>
         </div>
+        ${getReactionsHtml(msg, msgId)}
       `;
       
       // sender 정보 저장 (닉네임이 숨겨진 경우에도 비교 가능하도록)
@@ -1438,6 +1726,7 @@
           <span class="time">${msg.timestamp ? formatTime(msg.timestamp) : ""}${msg.edited ? '<span class="edited-badge">(수정됨)</span>' : ''}</span>
           <button class="reply-button" onclick="replyToMsg('${msgId}')">↩</button>
         </div>
+        ${getReactionsHtml(msg, msgId)}
       `;
 
       // sender 정보 저장 (닉네임이 숨겨진 경우에도 비교 가능하도록)
@@ -1476,6 +1765,47 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+    }
+
+    // 반응 토글 (전역 함수)
+    window.toggleReaction = async function(messageId, emoji) {
+      const userName = nameInput.value.trim() || "익명";
+      const reactionPath = `messages/${messageId}/reactions/${emoji}`;
+      
+      try {
+        const snapshot = await db.ref(reactionPath).once("value");
+        const reactions = snapshot.val() || {};
+        
+        if (reactions[userName]) {
+          // 반응 취소
+          await db.ref(`${reactionPath}/${userName}`).remove();
+        } else {
+          // 반응 추가
+          await db.ref(`${reactionPath}/${userName}`).set(true);
+        }
+      } catch (err) {
+        console.error("반응 토글 실패:", err);
+      }
+    };
+
+    // 반응 HTML 생성 함수
+    function getReactionsHtml(msg, msgId) {
+      if (!msg.reactions) return "";
+      
+      const reactionItems = [];
+      for (const [emoji, users] of Object.entries(msg.reactions)) {
+        const userList = Object.keys(users);
+        const count = userList.length;
+        if (count === 0) continue; // 빈 반응 제외
+        
+        const isActive = userList.includes(nameInput.value.trim() || "익명");
+        reactionItems.push(`<span class="reaction ${isActive ? 'active' : ''}" onclick="toggleReaction('${msgId}', '${emoji}')"><span class="emoji">${emoji}</span><span class="count">${count}</span></span>`);
+      }
+      
+      if (reactionItems.length > 0) {
+        return `<div class="reactions">${reactionItems.join('')}</div>`;
+      }
+      return "";
     }
 
     // 답장 버튼 클릭 핸들러 (전역)
