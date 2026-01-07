@@ -671,16 +671,76 @@
       "🎉", "🎊", "🎈", "🎁", "🏆", "🥇", "🥈", "🥉"
     ];
 
+    // 이모지 사용 빈도 가져오기
+    function getEmojiUsageCount(emoji) {
+      const usage = JSON.parse(localStorage.getItem("emoji_usage") || "{}");
+      return usage[emoji] || 0;
+    }
+
+    // 이모지 사용 빈도 증가
+    function incrementEmojiUsage(emoji) {
+      const usage = JSON.parse(localStorage.getItem("emoji_usage") || "{}");
+      usage[emoji] = (usage[emoji] || 0) + 1;
+      localStorage.setItem("emoji_usage", JSON.stringify(usage));
+    }
+
+    // 자주 사용한 이모지 가져오기 (상위 16개)
+    function getFrequentEmojis() {
+      const usage = JSON.parse(localStorage.getItem("emoji_usage") || "{}");
+      const sorted = Object.entries(usage)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 16)
+        .map(([emoji]) => emoji);
+      return sorted;
+    }
+
     // 이모지 피커 초기화
     function initEmojiPicker() {
-      emojiGrid.innerHTML = "";
+      const parent = emojiGrid.parentElement;
+      
+      // 기존 내용 제거
+      while (parent.firstChild) {
+        parent.removeChild(parent.firstChild);
+      }
+      
+      // 자주 사용한 이모지 섹션
+      const frequentEmojis = getFrequentEmojis();
+      if (frequentEmojis.length > 0) {
+        const frequentHeader = document.createElement("div");
+        frequentHeader.className = "emoji-header";
+        frequentHeader.textContent = "자주 사용";
+        parent.appendChild(frequentHeader);
+        
+        const frequentGrid = document.createElement("div");
+        frequentGrid.className = "emoji-grid";
+        frequentEmojis.forEach(emoji => {
+          const item = document.createElement("div");
+          item.className = "emoji-item";
+          item.textContent = emoji;
+          item.onclick = () => addReaction(emoji);
+          frequentGrid.appendChild(item);
+        });
+        parent.appendChild(frequentGrid);
+      }
+      
+      // 모든 이모지 섹션
+      const allHeader = document.createElement("div");
+      allHeader.className = "emoji-header";
+      allHeader.textContent = frequentEmojis.length > 0 ? "모든 이모지" : "이모지 선택";
+      allHeader.style.marginTop = frequentEmojis.length > 0 ? "12px" : "0";
+      parent.appendChild(allHeader);
+      
+      const allGrid = document.createElement("div");
+      allGrid.className = "emoji-grid";
+      allGrid.id = "emojiGrid";
       popularEmojis.forEach(emoji => {
         const item = document.createElement("div");
         item.className = "emoji-item";
         item.textContent = emoji;
         item.onclick = () => addReaction(emoji);
-        emojiGrid.appendChild(item);
+        allGrid.appendChild(item);
       });
+      parent.appendChild(allGrid);
     }
     initEmojiPicker();
 
@@ -1454,6 +1514,9 @@
         } else {
           // 반응 추가
           await db.ref(`${reactionPath}/${userName}`).set(true);
+          // 사용 빈도 증가 및 피커 업데이트
+          incrementEmojiUsage(emoji);
+          setTimeout(() => initEmojiPicker(), 300);
         }
       } catch (err) {
         console.error("반응 추가 실패:", err);
