@@ -12,20 +12,8 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// 백그라운드 메시지 처리
-messaging.onBackgroundMessage((payload) => {
-  console.log('백그라운드 메시지:', payload);
-  
-  const title = (payload.notification && payload.notification.title) || '새 메시지';
-  const options = {
-    body: (payload.notification && payload.notification.body) || '',
-    icon: '/MyLove/icon-192.png',
-    badge: '/MyLove/icon-192.png',
-    data: payload.data
-  };
-
-  self.registration.showNotification(title, options);
-});
+// FCM이 자동으로 알림을 표시하므로 onBackgroundMessage 불필요
+// Cloud Functions에서 notification 필드를 보내면 자동 표시됨
 
 // 알림 클릭 처리
 self.addEventListener('notificationclick', (event) => {
