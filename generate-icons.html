@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>아이콘 생성기</title>
+</head>
+<body>
+  <h2>Asung HMP 아이콘</h2>
+  <canvas id="canvas192" width="192" height="192"></canvas>
+  <canvas id="canvas512" width="512" height="512"></canvas>
+  <br><br>
+  <button onclick="download192()">192x192 다운로드</button>
+  <button onclick="download512()">512x512 다운로드</button>
+
+  <script>
+    function drawIcon(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      
+      // 배경 (초록색)
+      ctx.fillStyle = '#2E7D32';
+      ctx.fillRect(0, 0, size, size);
+      
+      // 말풍선
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(size * 0.5, size * 0.45, size * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // 말풍선 꼬리
+      ctx.beginPath();
+      ctx.moveTo(size * 0.6, size * 0.65);
+      ctx.lineTo(size * 0.7, size * 0.8);
+      ctx.lineTo(size * 0.5, size * 0.7);
+      ctx.fill();
+      
+      // 텍스트 "HMP"
+      ctx.fillStyle = '#2E7D32';
+      ctx.font = `bold ${size * 0.15}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('HMP', size * 0.5, size * 0.45);
+    }
+
+    drawIcon(document.getElementById('canvas192'), 192);
+    drawIcon(document.getElementById('canvas512'), 512);
+
+    function download192() {
+      const canvas = document.getElementById('canvas192');
+      const link = document.createElement('a');
+      link.download = 'icon-192.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    function download512() {
+      const canvas = document.getElementById('canvas512');
+      const link = document.createElement('a');
+      link.download = 'icon-512.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+  </script>
+</body>
+</html>

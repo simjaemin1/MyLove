@@ -16,11 +16,11 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('백그라운드 메시지:', payload);
   
-  const title = payload.notification?.title || '새 메시지';
+  const title = (payload.notification && payload.notification.title) || '새 메시지';
   const options = {
-    body: payload.notification?.body || '',
-    icon: '/icon.png',
-    badge: '/badge.png',
+    body: (payload.notification && payload.notification.body) || '',
+    icon: '/MyLove/icon-192.png',
+    badge: '/MyLove/icon-192.png',
     data: payload.data
   };
 
@@ -31,6 +31,6 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
-    clients.openWindow('/')
+    clients.openWindow('/MyLove/')
   );
 });

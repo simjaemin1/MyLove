@@ -33,7 +33,12 @@ exports.sendPushNotification = onValueCreated(
       const tokenKeys = [];
 
       Object.entries(tokensData).forEach(([key, data]) => {
+        // 로그인 사용자: userId로 체크
         if (senderId && data.userId === senderId) {
+          return;
+        }
+        // 비로그인 사용자: name으로 체크
+        if (!senderId && data.name === senderName) {
           return;
         }
         tokens.push(data.token);
@@ -82,7 +87,7 @@ exports.sendPushNotification = onValueCreated(
         });
 
         const deletePromises = failedTokens.map((key) =>
-          admin.database().ref(`fcmTokens/${key}`).remove(),
+            admin.database().ref(`fcmTokens/${key}`).remove(),
         );
         await Promise.all(deletePromises);
         console.log(`${failedTokens.length}개의 유효하지 않은 토큰 삭제`);
