@@ -87,7 +87,7 @@ exports.sendPushNotification = onValueCreated(
         });
 
         const deletePromises = failedTokens.map((key) =>
-            admin.database().ref(`fcmTokens/${key}`).remove(),
+          admin.database().ref(`fcmTokens/${key}`).remove(),
         );
         await Promise.all(deletePromises);
         console.log(`${failedTokens.length}개의 유효하지 않은 토큰 삭제`);
