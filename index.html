@@ -1008,19 +1008,8 @@
       messaging.onMessage((payload) => {
         console.log("포그라운드 메시지:", payload);
         console.log("payload.data:", payload.data);
-        console.log("document.hasFocus():", document.hasFocus());
-        
-        // 페이지가 포커스를 잃었을 때만 알림 표시
-        if (!document.hasFocus() && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          const title = (payload.data && payload.data.title) || '새 메시지';
-          const body = (payload.data && payload.data.body) || '';
-          console.log("알림 표시:", title, body);
-          new Notification(title, {
-            body: body,
-            icon: 'https://simjaemin1.github.io/MyLove/icon-192.png',
-            badge: 'https://simjaemin1.github.io/MyLove/icon-192.png'
-          });
-        }
+        // 알림은 Service Worker에서만 표시 (중복 방지)
+        // 포그라운드에서는 메시지가 실시간으로 화면에 추가되므로 알림 불필요
       });
     }
 
