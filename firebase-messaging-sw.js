@@ -55,6 +55,8 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('push', (event) => {
   console.log('표준 Push 이벤트 수신:', event);
   
+  // FCM 푸시는 onBackgroundMessage에서 처리하므로 여기서는 스킵
+  // Web Push만 처리 (Safari용)
   if (!event.data) {
     console.log('Push 데이터 없음');
     return;
@@ -70,6 +72,14 @@ self.addEventListener('push', (event) => {
 
   console.log('Push payload:', payload);
 
+  // FCM 메시지는 특정 구조를 가지므로 체크
+  // FCM은 from, collapseKey 등의 필드가 있음
+  if (payload.from || payload.fcmMessageId) {
+    console.log('FCM 메시지는 onBackgroundMessage에서 처리. 스킵.');
+    return;
+  }
+
+  // Web Push만 처리
   const title = payload.title || '새 메시지';
   const options = {
     body: payload.body || '',
