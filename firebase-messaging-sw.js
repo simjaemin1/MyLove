@@ -71,6 +71,8 @@ self.addEventListener('push', (event) => {
   }
 
   console.log('Push payload:', payload);
+  console.log('payload.title:', payload.title);
+  console.log('payload.body:', payload.body);
 
   // FCM 메시지는 특정 구조를 가지므로 체크
   // FCM은 from, collapseKey 등의 필드가 있음
@@ -88,6 +90,8 @@ self.addEventListener('push', (event) => {
     data: payload.data || {},
     tag: 'chat-message'
   };
+  
+  console.log('알림 표시:', title, options.body);
 
   event.waitUntil(
     self.registration.showNotification(title, options)
