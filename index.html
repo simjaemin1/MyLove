@@ -983,7 +983,7 @@
     // 알림 상태 초기화
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       notificationBtn.textContent = "🔔 알림 켜짐";
-      registerServiceWorker().then(() => setupFCM());
+      // 토큰 갱신은 로그인 후에 자동으로 실행
     }
 
     // 클립보드 붙여넣기 (Ctrl+V / Cmd+V)
@@ -1132,6 +1132,14 @@
           localStorage.setItem("chat_user_id", userId);
           localStorage.setItem("chat_user_name", userData.name || "");
           updateUIForLogin(true);
+          
+          // 알림 권한이 있으면 토큰 갱신
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            registerServiceWorker().then(() => {
+              setupFCM();
+              setupWebPush();
+            });
+          }
         } else {
           // 신규 사용자 - 빈 이름으로 생성
           usersRef.child(userId).set({ name: "" }).then(() => {
@@ -1140,6 +1148,14 @@
             localStorage.setItem("chat_user_id", userId);
             updateUIForLogin(true);
             alert("새 아이디로 등록되었습니다. 닉네임을 설정해주세요.");
+            
+            // 알림 권한이 있으면 토큰 갱신
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              registerServiceWorker().then(() => {
+                setupFCM();
+                setupWebPush();
+              });
+            }
           });
         }
         refreshMessages();
