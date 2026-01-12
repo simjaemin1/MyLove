@@ -894,11 +894,10 @@
       messaging.onMessage((payload) => {
         console.log("포그라운드 메시지:", payload);
         console.log("payload.data:", payload.data);
-        console.log("document.hidden:", document.hidden);
-        console.log("document.visibilityState:", document.visibilityState);
+        console.log("document.hasFocus():", document.hasFocus());
         
-        // 페이지가 보이지 않을 때(다른 탭, 최소화 등) 알림 표시
-        if (document.hidden && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        // 페이지가 포커스를 잃었을 때만 알림 표시
+        if (!document.hasFocus() && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           const title = (payload.data && payload.data.title) || '새 메시지';
           const body = (payload.data && payload.data.body) || '';
           console.log("알림 표시:", title, body);
@@ -910,17 +909,6 @@
         }
       });
     }
-
-    // 탭 전환 감지 (Safari 호환성)
-    document.addEventListener('visibilitychange', () => {
-      console.log('visibilitychange:', document.hidden ? '숨김' : '보임');
-      // 탭이 보이게 되면 Service Worker 상태 확인
-      if (!document.hidden && swRegistration) {
-        swRegistration.update().then(() => {
-          console.log('Service Worker 업데이트 확인 완료');
-        });
-      }
-    });
 
     // 알림 상태 초기화
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
