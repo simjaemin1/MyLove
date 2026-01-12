@@ -787,7 +787,9 @@
       console.log("registerServiceWorker 시작");
       if ('serviceWorker' in navigator) {
         try {
-          swRegistration = await navigator.serviceWorker.register('/MyLove/firebase-messaging-sw.js');
+          swRegistration = await navigator.serviceWorker.register('/MyLove/firebase-messaging-sw.js', {
+            scope: '/MyLove/'
+          });
           console.log('Service Worker 등록 성공:', swRegistration);
           
           // 업데이트 확인 및 자동 활성화
@@ -857,9 +859,24 @@
         if (token) {
           const tokenKey = token.replace(/[.#$\/\[\]]/g, '_');
           console.log("DB에 저장 시도...", tokenKey);
+          
+          // userId가 있으면 users에서 이름 가져오기
+          let userName = nameInput.value.trim() || "익명";
+          if (currentUserId) {
+            try {
+              const userSnapshot = await usersRef.child(currentUserId).once('value');
+              const userData = userSnapshot.val();
+              if (userData && userData.name) {
+                userName = userData.name;
+              }
+            } catch (err) {
+              console.error("사용자 이름 가져오기 실패:", err);
+            }
+          }
+          
           await fcmTokensRef.child(tokenKey).set({
             token: token,
-            name: nameInput.value.trim() || "익명",
+            name: userName,
             userId: currentUserId || null,
             updatedAt: Date.now()
           });
