@@ -53,15 +53,14 @@ exports.sendPushNotification = onValueCreated(
       const bodyText = text.length > 50 ?
           text.substring(0, 50) + "..." : text;
 
+      // data-only 메시지로 전송 (FCM 자동 알림 차단, Service Worker에서만 처리)
       const payload = {
-        notification: {
-          title: senderName,
-          body: bodyText,
-        },
         data: {
           messageId: event.params.messageId,
           senderId: senderId || "",
           senderName: senderName,
+          title: senderName,
+          body: bodyText,
         },
       };
 
@@ -69,7 +68,6 @@ exports.sendPushNotification = onValueCreated(
 
       const response = await admin.messaging().sendEachForMulticast({
         tokens: tokens,
-        notification: payload.notification,
         data: payload.data,
       });
 

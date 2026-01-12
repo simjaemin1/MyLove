@@ -12,21 +12,20 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// 백그라운드 메시지 처리
+// 백그라운드 메시지 처리 (data-only)
 messaging.onBackgroundMessage(async (payload) => {
   console.log('백그라운드 메시지:', payload);
   
-  // 기존 알림들 모두 닫기 (중복 방지)
-  const notifications = await self.registration.getNotifications();
-  notifications.forEach(notification => notification.close());
+  // data-only 메시지에서 정보 추출
+  const title = (payload.data && payload.data.title) || '새 메시지';
+  const body = (payload.data && payload.data.body) || '';
   
-  const title = (payload.notification && payload.notification.title) || '새 메시지';
   const options = {
-    body: (payload.notification && payload.notification.body) || '',
+    body: body,
     icon: 'https://simjaemin1.github.io/MyLove/icon-192.png',
     badge: 'https://simjaemin1.github.io/MyLove/icon-192.png',
     data: payload.data,
-    tag: 'chat-message' // 같은 태그로 중복 방지
+    tag: 'chat-message'
   };
 
   return self.registration.showNotification(title, options);
