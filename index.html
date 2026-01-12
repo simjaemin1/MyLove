@@ -847,6 +847,12 @@
     // FCM 토큰 발급 및 저장
     async function setupFCM() {
       console.log("setupFCM 시작");
+      console.trace("setupFCM 호출 스택:");
+      console.log("currentUserId:", currentUserId);
+      console.log("nameInput.value:", nameInput.value);
+      console.log("localStorage userId:", localStorage.getItem("chat_user_id"));
+      console.log("localStorage name:", localStorage.getItem("chat_user_name"));
+      
       if (!messaging) {
         console.log("FCM이 지원되지 않습니다");
         return;
@@ -875,6 +881,13 @@
         if (token) {
           const tokenKey = token.replace(/[.#$\/\[\]]/g, '_');
           console.log("DB에 저장 시도...", tokenKey);
+          
+          // 로그인 사용자는 반드시 currentUserId가 있어야 함
+          const savedUserId = localStorage.getItem("chat_user_id");
+          if (savedUserId && !currentUserId) {
+            console.log("❌ currentUserId가 아직 로드 안 됨. 토큰 저장 스킵");
+            return;
+          }
           
           // userId가 있으면 users에서 이름 가져오기
           let userName = nameInput.value.trim() || "익명";
@@ -953,6 +966,13 @@
         });
 
         console.log("Web Push 구독 성공:", subscription);
+
+        // 로그인 사용자는 반드시 currentUserId가 있어야 함
+        const savedUserId = localStorage.getItem("chat_user_id");
+        if (savedUserId && !currentUserId) {
+          console.log("❌ currentUserId가 아직 로드 안 됨. 구독 저장 스킵");
+          return;
+        }
 
         // userId가 있으면 users에서 이름 가져오기
         let userName = nameInput.value.trim() || "익명";
