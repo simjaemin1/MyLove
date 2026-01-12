@@ -789,6 +789,18 @@
         try {
           swRegistration = await navigator.serviceWorker.register('/MyLove/firebase-messaging-sw.js');
           console.log('Service Worker 등록 성공:', swRegistration);
+          
+          // 업데이트 확인 및 자동 활성화
+          swRegistration.addEventListener('updatefound', () => {
+            const newWorker = swRegistration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('새 Service Worker 업데이트 감지 - 자동 활성화');
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                window.location.reload();
+              }
+            });
+          });
         } catch (err) {
           console.error('Service Worker 등록 실패:', err);
         }
@@ -872,7 +884,7 @@
           console.log("알림 표시:", title, body);
           new Notification(title, {
             body: body,
-            icon: '/MyLove/icon-192.png'
+            icon: 'https://simjaemin1.github.io/MyLove/icon-192.png'
           });
         }
       });
