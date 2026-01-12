@@ -896,10 +896,12 @@
     async function setupWebPush() {
       console.log("setupWebPush 시작");
       
-      // Safari 감지
+      // macOS Safari만 감지 (iOS/Android 제외)
       const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-      if (!isSafari) {
-        console.log("Safari가 아니므로 Web Push 스킵");
+      const isDesktop = !/mobile|android|iphone|ipad|ipod/i.test(navigator.userAgent);
+      
+      if (!isSafari || !isDesktop) {
+        console.log("macOS Safari가 아니므로 Web Push 스킵");
         return;
       }
 
