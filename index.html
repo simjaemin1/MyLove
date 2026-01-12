@@ -894,6 +894,17 @@
       });
     }
 
+    // 탭 전환 감지 (Safari 호환성)
+    document.addEventListener('visibilitychange', () => {
+      console.log('visibilitychange:', document.hidden ? '숨김' : '보임');
+      // 탭이 보이게 되면 Service Worker 상태 확인
+      if (!document.hidden && swRegistration) {
+        swRegistration.update().then(() => {
+          console.log('Service Worker 업데이트 확인 완료');
+        });
+      }
+    });
+
     // 알림 상태 초기화
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       notificationBtn.textContent = "🔔 알림 켜짐";
