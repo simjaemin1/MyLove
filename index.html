@@ -960,6 +960,16 @@
         }
 
         const registration = await navigator.serviceWorker.ready;
+        
+        // 기존 구독 확인 및 삭제
+        const existingSubscription = await registration.pushManager.getSubscription();
+        if (existingSubscription) {
+          console.log("기존 구독 삭제 중...");
+          await existingSubscription.unsubscribe();
+          console.log("기존 구독 삭제 완료");
+        }
+        
+        // 새로 구독
         const subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(WEB_PUSH_VAPID_KEY)
