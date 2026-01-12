@@ -591,6 +591,7 @@
 
     // FCM VAPID 키
     const VAPID_KEY = "BIS2lwuLLzIiAIu9bTQ38C_tdOIj_LIf1VHWsq-W7zedbb44lvM0y9bC_cF8c3Fd2709wA83nHpqZxirsPfiCzE";
+    const WEB_PUSH_VAPID_KEY = "BA2f4E796BWArflJL5ab3dlGwqHS4_8UCmEBr1aE-6QSAdH8QPVLHFHkGF8yn27tiS7YVFA4ro34ZFOKnwaODZ0";
 
     const messagesEl = document.getElementById("messages");
     const userIdInput = document.getElementById("userIdInput");
@@ -830,6 +831,8 @@
           console.log("swRegistration:", swRegistration);
           console.log("FCM 설정 시도...");
           await setupFCM();
+          console.log("Web Push 설정 시도...");
+          await setupWebPush();
           notificationBtn.textContent = "🔔 알림 켜짐 (갱신됨)";
           alert("알림이 활성화되었습니다!");
         } else {
@@ -886,6 +889,71 @@
         }
       } catch (err) {
         console.error("FCM 토큰 발급 실패:", err);
+      }
+    }
+
+    // Safari용 Web Push 구독
+    async function setupWebPush() {
+      console.log("setupWebPush 시작");
+      
+      // Safari 감지
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      if (!isSafari) {
+        console.log("Safari가 아니므로 Web Push 스킵");
+        return;
+      }
+
+      try {
+        console.log("Web Push 구독 시도...");
+        
+        // VAPID 키를 Uint8Array로 변환
+        function urlBase64ToUint8Array(base64String) {
+          const padding = '='.repeat((4 - base64String.length % 4) % 4);
+          const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+          const rawData = window.atob(base64);
+          const outputArray = new Uint8Array(rawData.length);
+          for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+          }
+          return outputArray;
+        }
+
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(WEB_PUSH_VAPID_KEY)
+        });
+
+        console.log("Web Push 구독 성공:", subscription);
+
+        // userId가 있으면 users에서 이름 가져오기
+        let userName = nameInput.value.trim() || "익명";
+        if (currentUserId) {
+          try {
+            const userSnapshot = await usersRef.child(currentUserId).once('value');
+            const userData = userSnapshot.val();
+            if (userData && userData.name) {
+              userName = userData.name;
+            }
+          } catch (err) {
+            console.error("사용자 이름 가져오기 실패:", err);
+          }
+        }
+
+        // 구독 정보를 Firebase에 저장
+        const subscriptionKey = subscription.endpoint.replace(/[.#$\/\[\]:]/g, '_');
+        await firebase.database().ref(`webPushSubscriptions/${subscriptionKey}`).set({
+          subscription: subscription.toJSON(),
+          name: userName,
+          userId: currentUserId || null,
+          updatedAt: Date.now()
+        });
+
+        console.log("Web Push 구독 DB 저장 완료!");
+      } catch (err) {
+        console.error("Web Push 구독 실패:", err);
       }
     }
 

@@ -45,7 +45,41 @@ messaging.onBackgroundMessage(async (payload) => {
 // 알림 클릭 처리
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/MyLove/';
   event.waitUntil(
-    clients.openWindow('/MyLove/')
+    clients.openWindow(url)
+  );
+});
+
+// 표준 Web Push 이벤트 처리 (Safari용)
+self.addEventListener('push', (event) => {
+  console.log('표준 Push 이벤트 수신:', event);
+  
+  if (!event.data) {
+    console.log('Push 데이터 없음');
+    return;
+  }
+
+  let payload;
+  try {
+    payload = event.data.json();
+  } catch (err) {
+    console.error('Push 데이터 파싱 실패:', err);
+    return;
+  }
+
+  console.log('Push payload:', payload);
+
+  const title = payload.title || '새 메시지';
+  const options = {
+    body: payload.body || '',
+    icon: payload.icon || 'https://simjaemin1.github.io/MyLove/icon-192.png',
+    badge: payload.badge || 'https://simjaemin1.github.io/MyLove/icon-192.png',
+    data: payload.data || {},
+    tag: 'chat-message'
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
   );
 });
