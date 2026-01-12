@@ -864,8 +864,15 @@
     if (messaging) {
       messaging.onMessage((payload) => {
         console.log("포그라운드 메시지:", payload);
-        // Service Worker에서 처리하므로 여기서는 알림 표시하지 않음
-        // 메시지는 실시간 리스너(child_added)로 자동 추가됨
+        // 창이 포커스를 잃었을 때만 알림 표시 (다른 탭, 다른 앱)
+        if (typeof Notification !== 'undefined' && !document.hasFocus() && Notification.permission === 'granted') {
+          const title = (payload.notification && payload.notification.title) || '새 메시지';
+          const body = (payload.notification && payload.notification.body) || '';
+          new Notification(title, {
+            body: body,
+            icon: '/MyLove/icon-192.png'
+          });
+        }
       });
     }
 
