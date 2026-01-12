@@ -12,6 +12,13 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// skipWaiting 메시지 처리
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 // 백그라운드 메시지 처리 (data-only)
 messaging.onBackgroundMessage(async (payload) => {
   console.log('백그라운드 메시지:', payload);
