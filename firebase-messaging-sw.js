@@ -24,9 +24,9 @@ messaging.onBackgroundMessage(async (payload) => {
   console.log('백그라운드 메시지:', payload);
   console.log('payload.data:', payload.data);
   
-  // data-only 메시지에서 정보 추출
-  const title = (payload.data && payload.data.title) || '새 메시지';
-  const body = (payload.data && payload.data.body) || '';
+  // data-only 메시지에서 정보 추출 (최상위 또는 data 안)
+  const title = payload.title || (payload.data && payload.data.title) || '새 메시지';
+  const body = payload.body || (payload.data && payload.data.body) || '';
   
   console.log('알림 title:', title);
   console.log('알림 body:', body);

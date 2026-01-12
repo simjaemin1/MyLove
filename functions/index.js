@@ -8,7 +8,7 @@ admin.initializeApp();
 webpush.setVapidDetails(
     "mailto:shimjaemin1@gmail.com",
     "BA2f4E796BWArflJL5ab3dlGwqHS4_8UCmEBr1aE-6QSAdH8QPVLHFHkGF8yn27tiS7YVFA4ro34ZFOKnwaODZ0",
-    "Ob7h3pTDNGTsKdc4uySVUFgbRbvLDvvnYc1bupfK-eI"
+    "Ob7h3pTDNGTsKdc4uySVUFgbRbvLDvvnYc1bupfK-eI",
 );
 
 // 새 메시지가 추가되면 푸시 알림 전송
@@ -112,7 +112,7 @@ exports.sendPushNotification = onValueCreated(
 
           if (failedTokens.length > 0) {
             const deletePromises = failedTokens.map((key) =>
-              admin.database().ref(`fcmTokens/${key}`).remove()
+              admin.database().ref(`fcmTokens/${key}`).remove(),
             );
             await Promise.all(deletePromises);
             console.log(`${failedTokens.length}개의 유효하지 않은 FCM 토큰 삭제`);
@@ -132,6 +132,9 @@ exports.sendPushNotification = onValueCreated(
           data: {
             url: "https://simjaemin1.github.io/MyLove/",
             messageId: event.params.messageId,
+            title: senderName,
+            body: bodyText,
+            senderName: senderName,
           },
         });
 
@@ -139,7 +142,7 @@ exports.sendPushNotification = onValueCreated(
           webpush.sendNotification(subscription, webPushPayload)
               .catch((err) => {
                 console.error("Web Push 전송 실패:", err);
-              })
+              }),
         );
 
         await Promise.all(webPushPromises);
@@ -147,5 +150,5 @@ exports.sendPushNotification = onValueCreated(
       }
 
       return null;
-    }
+    },
 );
