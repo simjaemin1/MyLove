@@ -64,10 +64,19 @@ self.addEventListener('push', (event) => {
 
   let payload;
   try {
-    payload = event.data.json();
+    // Safari에서는 text()로 받아서 파싱하는 게 더 안정적
+    const text = event.data.text();
+    console.log('Push 데이터 (text):', text);
+    payload = JSON.parse(text);
   } catch (err) {
     console.error('Push 데이터 파싱 실패:', err);
-    return;
+    // 파싱 실패 시 json() 시도
+    try {
+      payload = event.data.json();
+    } catch (err2) {
+      console.error('json() 파싱도 실패:', err2);
+      return;
+    }
   }
 
   console.log('Push payload:', payload);
