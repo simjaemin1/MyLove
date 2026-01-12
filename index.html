@@ -851,6 +851,19 @@
         console.log("FCM이 지원되지 않습니다");
         return;
       }
+      
+      // localStorage에 userId가 있으면 로딩 대기
+      const savedUserId = localStorage.getItem("chat_user_id");
+      if (savedUserId && !currentUserId) {
+        console.log("userId 로딩 대기 중...");
+        // 최대 3초 대기
+        for (let i = 0; i < 30; i++) {
+          if (currentUserId) break;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        console.log("대기 완료. currentUserId:", currentUserId);
+      }
+      
       try {
         console.log("토큰 발급 시도...");
         const token = await messaging.getToken({
@@ -903,6 +916,17 @@
       if (!isSafari || !isDesktop) {
         console.log("macOS Safari가 아니므로 Web Push 스킵");
         return;
+      }
+
+      // localStorage에 userId가 있으면 로딩 대기
+      const savedUserId = localStorage.getItem("chat_user_id");
+      if (savedUserId && !currentUserId) {
+        console.log("userId 로딩 대기 중...");
+        for (let i = 0; i < 30; i++) {
+          if (currentUserId) break;
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        console.log("대기 완료. currentUserId:", currentUserId);
       }
 
       try {
